@@ -26,17 +26,29 @@ import asyncio
 import logging
 import sys
 
+from osm_pla.config.config import Config
+from osm_pla.server.server import Server
+
 def main():
+    parser = argparse.ArgumentParser(prog='osm-policy-agent')
+    parser.add_argument('--config-file', nargs='?', help='PLA configuration file')
+    args = parser.parse_args()
+    cfg = Config(args.config_file)
+
     root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
+    root.setLevel(logging.getLevelName(cfg.get('global', 'loglevel')))
     ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.DEBUG)
+    ch.setLevel(logging.getLevelName(cfg.get('global', 'loglevel')))
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', '%m/%d/%Y %I:%M:%S %p')
     ch.setFormatter(formatter)
     root.addHandler(ch)
 
     log = logging.getLogger(__name__)
     log.info("Starting PLA Server...")
+
+    loop = asyncio.get_event_loop()
+    server = Server(cfg, loop)
+    server.run()
 
 if __name__ == '__main__':
     main()

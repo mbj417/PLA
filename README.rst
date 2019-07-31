@@ -30,7 +30,7 @@ Components
 
 PLA module has the following components:
 
-* MON Server: Handles placement.
+* PLA Server: Handles placement.
 
 Configuration
 *************
@@ -61,7 +61,9 @@ The following is a reference for making changes to the code and testing them in 
     # Make your changes here
     # Build the image
     docker build -t opensourcemano/pla:develop -f docker/Dockerfile .
-    # Deploy that image in a running OSM deployment
+    # Start as service in already deployed OSM stack
+    docker service create --name osm_pla --network netosm opensourcemano/pla:develop
+    # Update image in a running OSM deployment
     docker service update --force --image opensourcemano/pla:develop osm_pla
     # Change a specific env variable
     docker service update --force --env-add VARIABLE_NAME=new_value osm_pla

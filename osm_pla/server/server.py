@@ -54,13 +54,13 @@ class Server:
             log.error("kafka setup error. Exception: {}".format(e))
 
     def handle_kafka_command(self, topic, command, params):
-        log.info("Kafka message arrived: %s", values)
+        log.info("Kafka message arrived: {} {} {}".format(topic, command, params))
 
     async def kafka_read(self):
         log.info("Task kafka_read start")
         while True:
             try:
-                topics = ("pla")
+                topics = ("pla", "ns")
                 await self.msgBus.aioread(topics, self.loop, self.handle_kafka_command)
             except Exception as e:
                 log.error("kafka read error. Exception: {}".format(e))

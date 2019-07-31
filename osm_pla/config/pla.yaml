@@ -28,4 +28,3 @@ message:
   host: kafka
   port: 9092
   group_id: pla
-
