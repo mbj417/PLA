@@ -21,7 +21,8 @@
 ##
 
 global:
-  loglevel: DEBUG
+  loglevel: INFO
+#  loglevel: DEBUG
 
 message:
   driver: kafka

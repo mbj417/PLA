@@ -1,6 +1,5 @@
-# Copyright 2017 Intel Research and Development Ireland Limited
-# *************************************************************
-
+# Copyright 2019 ArctosLabs Scandinavia AB
+# ****************************************
 # This file is part of OSM Monitoring module
 # All Rights Reserved to Intel Corporation
 
@@ -20,7 +19,6 @@
 # contact: unknown@arctoslabs.com
 
 include requirements.txt
-include test-requirements.txt
 include README.rst
 recursive-include osm_pla *.py *.xml *.sh *.yaml
 recursive-include devops-stages *

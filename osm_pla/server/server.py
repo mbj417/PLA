@@ -15,19 +15,24 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+
+# For those usages not covered by the Apache License, Version 2.0 please
+# contact: patrik.rynback@arctoslabs.com or martin.bjorklund@arctoslabs.com
 ##
 
 import asyncio
-import yaml
 import logging
-import logging.handlers
-import getopt
-import sys
-from time import time, sleep
 
-from osm_common import dbmemory, dbmongo, fslocal, msglocal, msgkafka
-from osm_common import version as common_version
-from osm_common.msgbase import MsgException
+from osm_common import msglocal, msgkafka
+
+#import yaml
+#import logging.handlers
+#import getopt
+#import sys
+#from time import time, sleep
+#from osm_common import dbmemory, dbmongo, fslocal, msglocal, msgkafka
+#from osm_common import version as common_version
+#from osm_common.msgbase import MsgException
 
 from osm_pla.config.config import Config
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2018 Whitestack, LLC
+# Copyright 2019 ArctosLabs Scandinavia AB
 # *************************************************************
 
 # This file is part of OSM Monitoring module
@@ -19,7 +19,7 @@
 # under the License.
 
 # For those usages not covered by the Apache License, Version 2.0 please
-# contact: bdiaz@whitestack.com or glavado@whitestack.com
+# contact: patrik.rynback@arctoslabs.com or martin.bjorklund@arctoslabs.com
 ##
 import argparse
 import asyncio

@@ -53,21 +53,11 @@ setup(
     install_requires=[
         "aiokafka==0.4.*",
         "requests==2.18.*",
-        "python-keystoneclient==3.15.*",
-        "six==1.11.*",
-        "peewee==3.8.*",
         "pyyaml==3.*",
-        "prometheus_client==0.4.*",
-        "gnocchiclient==7.0.*",
-        "pyvcloud==19.1.1",
-        "python-ceilometerclient==2.9.*",
-        "peewee-migrate==1.1.*",
-        "python-novaclient==12.0.*",
         "pymysql==0.9.*",
-        "python-neutronclient==5.1.*",
         "osm-common",
         "n2vc"
-    ],
+   ],
     include_package_data=True,
     entry_points={
         "console_scripts": [
