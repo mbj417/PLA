@@ -3,8 +3,8 @@
 # Copyright 2019 ArctosLabs Scandinavia AB
 # *************************************************************
 
-# This file is part of OSM Monitoring module
-# All Rights Reserved to Whitestack, LLC
+# This file is part of OSM Placement module
+# All Rights Reserved to ArctosLabs Scandinavia AB
 
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain

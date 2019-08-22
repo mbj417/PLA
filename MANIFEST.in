@@ -16,7 +16,7 @@
 # under the License.
 
 # For those usages not covered by the Apache License, Version 2.0 please
-# contact: unknown@arctoslabs.com
+# contact: patrik.rynback@arctoslabs.com or martin.bjorklund@arctoslabs.com
 
 include requirements.txt
 include README.rst
