@@ -37,30 +37,30 @@ database:
  
 # Place Of Precence (POP), price list 
 pop:
-  - vim_url:http://10.234.12.47:5000/v3
-    vim_name:OpenStack1
+  - vim_url: http://10.234.12.47:5000/v3
+    vim_name: OpenStack1
     vm_price:
     - x_large: 10
     - large: 5
     - medium: 4
     - small: 3
     - tiny: 2
-  - vim_url:http://10.234.12.44:5000/v3
-    vim_name:OpenStack2
+  - vim_url: http://10.234.12.44:5000/v3
+    vim_name: OpenStack2
     vm_price:
     - large: 10
     - medium: 8
     - small: 6
     - tiny: 4
-  - vim_url:http://10.234.12.46:5000/v3
-    vim_name:OpenStack3
+  - vim_url: http://10.234.12.46:5000/v3
+    vim_name: OpenStack3
     vm_price:
     - large: 8
     - medium: 6
     - small: 3
     - tiny: 2
-  - vim_url:http://10.234.12.43:5000/v3
-    vim_name:OpenStack4
+  - vim_url: http://10.234.12.43:5000/v3
+    vim_name: OpenStack4
     vm_price:
     - large: 9
     - medium: 7
@@ -70,33 +70,33 @@ pop:
 # POP Interconnecting Link (PIL), price list and latency     
 pil:
   - pil_name: vim1_vim2
-  	vim1_url: :http://10.234.12.47:5000/v3
-  	vim2_url: :http://10.234.12.44:5000/v3
+  	vim1_url: http://10.234.12.47:5000/v3
+  	vim2_url: http://10.234.12.44:5000/v3
     pil_price: 5
     pil_latency: 50
   - pil_name: vim1_vim3
-  	vim1_url: :http://10.234.12.47:5000/v3
-  	vim2_url: :http://10.234.12.46:5000/v3
+  	vim1_url: http://10.234.12.47:5000/v3
+  	vim2_url: http://10.234.12.46:5000/v3
     pil_price: 6
     pil_latency: 100
   - pil_name: vim1_vim4
-  	vim1_url: :http://10.234.12.47:5000/v3
-  	vim2_url: :http://10.234.12.43:5000/v3
+  	vim1_url: http://10.234.12.47:5000/v3
+  	vim2_url: http://10.234.12.43:5000/v3
     pil_price: 6
     pil_latency: 150
   - pil_name: vim2_vim3
-  	vim2_url: :http://10.234.12.44:5000/v3
-  	vim3_url: :http://10.234.12.46:5000/v3
+  	vim2_url: http://10.234.12.44:5000/v3
+  	vim3_url: http://10.234.12.46:5000/v3
     pil_price: 5
     pil_latency: 50
   - pil_name: vim2_vim4
-  	vim2_url: :http://10.234.12.44:5000/v3
-  	vim3_url: :http://10.234.12.43:5000/v3
+  	vim2_url: http://10.234.12.44:5000/v3
+  	vim3_url: http://10.234.12.43:5000/v3
     pil_price: 6
     pil_latency: 100
   - pil_name: vim3_vim4
-  	vim2_url: :http://10.234.12.46:5000/v3
-  	vim3_url: :http://10.234.12.43:5000/v3
+  	vim2_url: http://10.234.12.46:5000/v3
+  	vim3_url: http://10.234.12.43:5000/v3
     pil_price: 5
     pil_latency: 50
     
