@@ -35,7 +35,7 @@ database:
   port: 27017
   name: osm
  
-# Place Of Precence (POP), price list 
+# Place Of Presence (POP), price list 
 pop:
   - vim_url: http://10.234.12.47:5000/v3
     vim_name: OpenStack1
@@ -93,7 +93,7 @@ pil:
     pil_endpoints:
       - http://10.234.12.44:5000/v3
       - http://10.234.12.46:5000/v3
-  - pil_decription: Link between OpenStack4 and OpenStack4
+  - pil_decription: Link between OpenStack2 and OpenStack4
     pil_price: 6
     pil_latency: 100
     pil_endpoints:
