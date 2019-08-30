@@ -70,18 +70,90 @@ class Server:
         except Exception as e:
             self.log.exception("kafka setup error. Exception: {}".format(e))
 
-    async def get_placement_suggestions(self, params):
+    def _get_project_filter(self, session):
+        p_filter = {}
+        project_filter_n = []
+        project_filter = list(session["project_id"])
+
+        if session["public"] is not None:
+            if session["public"]:
+                project_filter.append("ANY")
+            else:
+                project_filter_n.append("ANY")
+
+        if session.get("PROJECT.ne"):
+            project_filter_n.append(session["PROJECT.ne"])
+
+        if project_filter:
+            p_filter["_admin.projects_read.cont"] = project_filter
+        if project_filter_n:
+            p_filter["_admin.projects_read.ncont"] = project_filter_n
+
+        return p_filter
+
+    def _get_nsd(self, nsdId, session):
+        filter = self._get_project_filter(session)
+        filter["_id"] = nsdId
+        nsd = self.db.get_one("nsds", filter)
+        return nsd
+
+    def _get_enabled_vims(self, session):
+        filter = self._get_project_filter(session)
+        filter["_admin.operationalState"] = "ENABLED"
+        vims = self.db.get_list("vim_accounts", filter)
+        return vims
+
+    async def get_placement_suggestions(self, session, params):
+        nsd = self._get_nsd(params.get('nsdId'), session)
+        vims = self._get_enabled_vims(session)
+        pops = self.config.get('pop')
+
+        for vim in vims:
+            for pop in pops:
+                if vim['vim_url'] == pop['vim_url']:
+                    vim.update(pop)
+
+        self.log.info("vims = {}".format(json.dumps(vims)))
+        self.log.info("nsd = {}".format(json.dumps(nsd)))
+        # create vnf info (pick vim sequentially from list)
+        vnfs = []
+        defaultVimAccountId = params.get('vimAccountId', None)
+        vimNo = 0
+        for vnfd in nsd.get('constituent-vnfd', []):
+            vnfIndex = vnfd['member-vnf-index']
+            vnf = { 'member-vnf-index' :  vnfIndex, 'vimAccountId' : defaultVimAccountId }
+
+            # pick next vim unless last vim reached
+            if vimNo < len(vims):
+                vnf['vimAccountId'] = vims[vimNo]['_id']
+                vimNo += 1
+            vnfs.append(vnf)
+
+        # create vld info
+        vlds = []
+        for nsVld in nsd.get('vld', []):
+            vld = { 'name' : nsVld.get('name', "noname") }
+            vimNetworkNames = {}
+            for cp in nsVld.get('vnfd-connection-point-ref', []):
+                vnfIndex = cp.get('member-vnf-index-ref')
+                for vnf in vnfs:
+                    if vnf['member-vnf-index'] == vnfIndex:
+                        vimAccountId = vnf['vimAccountId']
+                        vimNetworkNames[vimAccountId] = 'private'
+                        break;
+            vld['vim-network-name'] = vimNetworkNames
+            vlds.append(vld)
+
         suggestions = []
-        vnf1 = {"member-vnf-index": "1", "vimAccountId": "8460b670-31cf-4fae-9f3e-d0dd6c57b61e"}
-        vnf2 = {"member-vnf-index": "2", "vimAccountId": "9b8b5268-acb7-4893-b494-a77656b418f2"}
-        vld = {'vim-network-name': {'92b056a7-38f5-438d-b8ee-3f93b3531f87': 'private', '6618d412-d7fc-4eb0-a6f8-d2c258e0e900': 'private'}, 'name': 'cirros_2vnf_nsd_vld1'}
-        suggestions.append({'vnf' : [vnf1, vnf2], 'vld': [vld],'wimAccountId': False })
+        suggestions.append({'vnf' : vnfs, 'vld': vlds,'wimAccountId': False })
         await self.msgBus.aiowrite("pla", "suggestions", { 'suggestions': suggestions })
 
     def handle_kafka_command(self, topic, command, params):
         self.log.info("Kafka msg arrived: {} {} {}".format(topic, command, params))
         if topic == "pla" and command == "get_suggestions":
-            self.loop.create_task(self.get_placement_suggestions(params))
+            session = params.get('session', {})
+            nsParams = params.get('nsParams')
+            self.loop.create_task(self.get_placement_suggestions(session, nsParams))
 
     async def kafka_read(self):
         self.log.info("Task kafka_read start")
