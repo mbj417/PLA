@@ -17,15 +17,20 @@
 # under the License.
 
 # For those usages not covered by the Apache License, Version 2.0 please
-# contact: patrik.rynback@arctoslabs.com or martin.bjorklund@arctoslabs.com
+# contact: xxx@arctoslabs.com
 ##
 
 global:
   loglevel: INFO
-#  loglevel: DEBUG
 
 message:
   driver: kafka
   host: kafka
   port: 9092
   group_id: pla
+
+database:
+  driver: mongo
+  host: mongo
+  port: 27017
+  name: osm
