@@ -74,7 +74,8 @@ class Server:
         suggestions = []
         vnf1 = {"member-vnf-index": "1", "vimAccountId": "8460b670-31cf-4fae-9f3e-d0dd6c57b61e"}
         vnf2 = {"member-vnf-index": "2", "vimAccountId": "9b8b5268-acb7-4893-b494-a77656b418f2"}
-        suggestions.append({'placement' : [vnf1, vnf2]})
+        vld = {'vim-network-name': {'92b056a7-38f5-438d-b8ee-3f93b3531f87': 'private', '6618d412-d7fc-4eb0-a6f8-d2c258e0e900': 'private'}, 'name': 'cirros_2vnf_nsd_vld1'}
+        suggestions.append({'vnf' : [vnf1, vnf2], 'vld': [vld],'wimAccountId': False })
         await self.msgBus.aiowrite("pla", "suggestions", { 'suggestions': suggestions })
 
     def handle_kafka_command(self, topic, command, params):
