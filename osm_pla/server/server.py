@@ -18,17 +18,17 @@
 ##
 
 import asyncio
-import yaml
+#import yaml
 import json
 import logging
-import logging.handlers
-import getopt
-import sys
-from time import time, sleep
+#import logging.handlers
+#import getopt
+#import sys
+#from time import time, sleep
 
-from osm_common import dbmemory, dbmongo, fslocal, msglocal, msgkafka
-from osm_common import version as common_version
-from osm_common.msgbase import MsgException
+from osm_common import dbmemory, dbmongo, msglocal, msgkafka
+#from osm_common import version as common_version
+#from osm_common.msgbase import MsgException
 
 from osm_pla.config.config import Config
 
