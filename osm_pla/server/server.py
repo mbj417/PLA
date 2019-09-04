@@ -27,6 +27,9 @@ import logging
 #from time import time, sleep
 
 from osm_common import dbmemory, dbmongo, msglocal, msgkafka
+from osm_pla.placement.mznplacement import MznPlacementConductor
+from osm_pla.placement.mznplacement import NsPlacementDataFactory
+
 #from osm_common import version as common_version
 #from osm_common.msgbase import MsgException
 
@@ -64,9 +67,9 @@ class Server:
             self.msgBus.loop = loop
             self.msgBus.connect(config.get('message'))
             
-            self.log.info("VIM Accounts in DB:")
-            self.vim_accounts = self.db.get_list("vim_accounts", {})
-            self.log.info(json.dumps(self.vim_accounts))
+#            self.log.info("VIM Accounts in DB:")
+#            self.vim_accounts = self.db.get_list("vim_accounts", {})
+#            self.log.info(json.dumps(self.vim_accounts))
         except Exception as e:
             self.log.exception("kafka setup error. Exception: {}".format(e))
 
@@ -97,6 +100,12 @@ class Server:
         nsd = self.db.get_one("nsds", filter)
         return nsd
 
+    def _get_vnfd(self, vnfdId, session):
+        filter = self._get_project_filter(session)
+        filter["id"] = vnfdId
+        vnfds = self.db.get_list("vnfds", filter)
+        return vnfds[0]
+
     def _get_enabled_vims(self, session):
         filter = self._get_project_filter(session)
         filter["_admin.operationalState"] = "ENABLED"
@@ -107,6 +116,11 @@ class Server:
         nsd = self._get_nsd(params.get('nsdId'), session)
         vims = self._get_enabled_vims(session)
         pops = self.config.get('pop')
+        vnfds = {}
+        for vnfdRef in nsd['constituent-vnfd']:
+            vnfdId = vnfdRef['vnfd-id-ref']
+            vnfd = self._get_vnfd(vnfdId, session)
+            vnfds[vnfdId] = vnfd
 
         for vim in vims:
             for pop in pops:
@@ -115,19 +129,35 @@ class Server:
 
         self.log.info("vims = {}".format(json.dumps(vims)))
         self.log.info("nsd = {}".format(json.dumps(nsd)))
-        # create vnf info (pick vim sequentially from list)
-        vnfs = []
-        defaultVimAccountId = params.get('vimAccountId', None)
-        vimNo = 0
-        for vnfd in nsd.get('constituent-vnfd', []):
-            vnfIndex = vnfd['member-vnf-index']
-            vnf = { 'member-vnf-index' :  vnfIndex, 'vimAccountId' : defaultVimAccountId }
 
-            # pick next vim unless last vim reached
-            if vimNo < len(vims):
-                vnf['vimAccountId'] = vims[vimNo]['_id']
-                vimNo += 1
+        vim_index = 1
+        vim_table = {}
+        for vim in vims:
+            vim_table[str(vim_index)] = vim['_id']
+            vim_index += 1
+            
+        nspd = NsPlacementDataFactory(nsd, vnfds).create_ns_placement_data()
+        self.log.info("nspd = {}".format(json.dumps(nspd._mzn_model_data)))
+        placement = MznPlacementConductor(vim_table, self.log).do_placement_computation(nspd)
+        self.log.info("MZN Placement = {}".format(json.dumps(placement._placement)))
+        vnfs = []
+        for vnfIndex, vimAccountId in placement._placement.items():
+            vnf = { 'member-vnf-index' :  vnfIndex, 'vimAccountId' : vimAccountId }
             vnfs.append(vnf)
+            
+        if False:
+            # create vnf info (pick vim sequentially from list)
+            defaultVimAccountId = params.get('vimAccountId', None)
+            vimNo = 0
+            for vnfd in nsd.get('constituent-vnfd', []):
+                vnfIndex = vnfd['member-vnf-index']
+                vnf = { 'member-vnf-index' :  vnfIndex, 'vimAccountId' : defaultVimAccountId }
+                
+                # pick next vim unless last vim reached
+                if vimNo < len(vims):
+                    vnf['vimAccountId'] = vims[vimNo]['_id']
+                    vimNo += 1
+                vnfs.append(vnf)
 
         # create vld info
         vlds = []
