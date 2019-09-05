@@ -119,9 +119,10 @@ class NsPlacementDataFactory(object):
     ''' collect service requirements, network resource and cost information
     and place in NsPlacementData'''
     
-    default_pop_pil_path = 'pop_pil.yaml'
-    default_nsd_path= 'nsd.yaml'
-    default_vnfd_path = 'vnfd.yaml'
+    pop_pil_path = 'pop_pil.yaml'
+    nsd_path= 'nsd.yaml'
+    vnfd_path = 'vnfd.yaml'
+    inventory_path = 'inventory.yaml'
     
     def __init__(self, nsd = None, member_vnfds = None):
         '''
@@ -130,9 +131,10 @@ class NsPlacementDataFactory(object):
         self._pp_dict = {}
         self._nsd = nsd
         self._member_vnfds = member_vnfds
-        self._pop_pil_path = pkg_resources.resource_filename(__name__, NsPlacementDataFactory.default_pop_pil_path)
-        self._nsd_path = pkg_resources.resource_filename(__name__, NsPlacementDataFactory.default_nsd_path)
-        self._vnfd_path = pkg_resources.resource_filename(__name__, NsPlacementDataFactory.default_vnfd_path)
+        self._pop_pil_path = pkg_resources.resource_filename(__name__, NsPlacementDataFactory.pop_pil_path)
+        self._nsd_path = pkg_resources.resource_filename(__name__, NsPlacementDataFactory.nsd_path)
+        self._vnfd_path = pkg_resources.resource_filename(__name__, NsPlacementDataFactory.vnfd_path)
+        self._inventory_path = pkg_resources.resource_filename(__name__, NsPlacementDataFactory.inventory_path)
         
         self._nspd = NsPlacementData()
     
@@ -284,12 +286,19 @@ class NsPlacementDataFactory(object):
                 self._nspd._mzn_model_data['service_vnf3_vm'] = vcpu_count
                 self._nspd._mzn_model_data['service_vnf3_storage'] = storage_gb
         
+
     def _add_inventory_data(self):
-        '''this is where we setup the used resources
-        FIXME should this also be a .yaml file for presentation purpose?'''        
-        self._nspd._mzn_model_data['consumed_vm'] = [0,0,0,0]
-        self._nspd._mzn_model_data['consumed_storage'] = [0,0,0,0]       
-                
+        '''this is where we setup the used resources'''                
+        try:
+            invntry_dict = {}            
+            with open(self._inventory_path) as invntry_fd:
+                invntry_data = yaml.safe_load_all(invntry_fd)
+                invntry_dict.update(next(invntry_data))                
+                self._nspd._mzn_model_data['consumed_vm'] = invntry_dict['consumed_vm']
+                self._nspd._mzn_model_data['consumed_storage'] = invntry_dict['consumed_storage']                               
+        except Exception as e:
+            raise Exception(e)
+
     def create_ns_placement_data(self):
         '''populate NsPlacmentData object'''
         self._add_pop_pil_info()

@@ -1,0 +1,10 @@
+consumed_vm : 
+   - 2
+   - 3
+   - 4
+   - 5
+consumed_storage:
+   - 2
+   - 3
+   - 4
+   - 5
