@@ -75,22 +75,24 @@ class Server:
 
     def _get_project_filter(self, session):
         p_filter = {}
-        project_filter_n = []
-        project_filter = list(session["project_id"])
 
-        if session["public"] is not None:
-            if session["public"]:
-                project_filter.append("ANY")
-            else:
-                project_filter_n.append("ANY")
+        if session is not None:
+            project_filter_n = []
+            project_filter = list(session["project_id"])
 
-        if session.get("PROJECT.ne"):
-            project_filter_n.append(session["PROJECT.ne"])
+            if session["public"] is not None:
+                if session["public"]:
+                    project_filter.append("ANY")
+                else:
+                    project_filter_n.append("ANY")
 
-        if project_filter:
-            p_filter["_admin.projects_read.cont"] = project_filter
-        if project_filter_n:
-            p_filter["_admin.projects_read.ncont"] = project_filter_n
+            if session.get("PROJECT.ne"):
+                project_filter_n.append(session["PROJECT.ne"])
+
+            if project_filter:
+                p_filter["_admin.projects_read.cont"] = project_filter
+            if project_filter_n:
+                p_filter["_admin.projects_read.ncont"] = project_filter_n
 
         return p_filter
 
@@ -181,7 +183,7 @@ class Server:
     def handle_kafka_command(self, topic, command, params):
         self.log.info("Kafka msg arrived: {} {} {}".format(topic, command, params))
         if topic == "pla" and command == "get_suggestions":
-            session = params.get('session', {})
+            session = params.get('session', None)
             nsParams = params.get('nsParams')
             self.loop.create_task(self.get_placement_suggestions(session, nsParams))
 
