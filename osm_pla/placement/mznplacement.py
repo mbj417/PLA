@@ -207,8 +207,10 @@ class NsPlacementDataFactory(object):
                         idx2 = int(match.group(2)) - 1
                 elif k == 'pil_latency':                
                     trp_latency[idx1][idx2] = v
+                    trp_latency[idx2][idx1] = v
                 elif k == 'pil_price':
                     trp_price[idx1][idx2] = v
+                    trp_price[idx2][idx1] = v
         
         
         self._nspd._mzn_model_data['trp_id'] = trp_id
@@ -241,7 +243,7 @@ class NsPlacementDataFactory(object):
 
         service_link1_latency = vlds[0]['link-constraint'][0]['value']
         service_link2_latency = vlds[1]['link-constraint'][0]['value']
-        service_latency = service_link1_latency + service_link2_latency
+        service_latency = int(service_link1_latency) + int(service_link2_latency)
         
         self._nspd._mzn_model_data['service_latency'] = service_latency
         self._nspd._mzn_model_data['service_link1_latency'] = service_link1_latency
