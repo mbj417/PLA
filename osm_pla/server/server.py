@@ -117,17 +117,18 @@ class Server:
     async def get_placement_suggestions(self, session, params):
         nsd = self._get_nsd(params.get('nsdId'), session)
         vims = self._get_enabled_vims(session)
-        #pops = self.config.get('pop')
         vnfds = {}
         for vnfdRef in nsd['constituent-vnfd']:
             vnfdId = vnfdRef['vnfd-id-ref']
             vnfd = self._get_vnfd(vnfdId, session)
             vnfds[vnfdId] = vnfd
 
+        #pops = self.config.get('pop')
         #for vim in vims:
         #    for pop in pops:
         #        if vim['vim_url'] == pop['vim_url']:
-        #            vim.update(pop)
+        #            pop.update(vim)
+        #            self.db.create("pops", pop)
 
         self.log.info("vims = {}".format(json.dumps(vims)))
         self.log.info("nsd = {}".format(json.dumps(nsd)))
