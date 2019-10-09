@@ -155,9 +155,11 @@ class NsPlacementDataFactory(object):
                    
     def _harvest_pop_data(self):
         '''extracts selected data from pop config'''
-        names = []
+        dc_ids = []
         num_vms = []
         vm_cost = []
+        dc_dict = {}
+        next_dc_no = 0
         
         #FIXME there is no storage information in pop, only number of vms. For now we hard code this
         storage = [100,100,100,100]
@@ -165,9 +167,12 @@ class NsPlacementDataFactory(object):
         #FIXME the minizinc model has single vm cost, as we are from the 'lagom' country we chose medium for this.
         vims = [e for e in self._pp_dict['pop']]
         for e in vims:
+            e['dc_no'] = next_dc_no
+            dc_ids.append(next_dc_no)
+            next_dc_no += 1
             for k,v in e.items():
-                if k == 'vim_name':
-                    names.append(v[-1:])
+                if k == 'vim_url':
+                  dc_dict[v] = e  
                 elif k == 'num_vm':
                     num_vms.append(v)
                 elif k == 'vm_price':
@@ -176,8 +181,10 @@ class NsPlacementDataFactory(object):
                             if k1 == 'medium':
                                 vm_cost.append(v1)
         
-        self._nspd._mzn_model_data['number_of_dc'] = len(names)
-        self._nspd._mzn_model_data['datacenter_id'] = names
+        self.dc_dict = dc_dict
+
+        self._nspd._mzn_model_data['number_of_dc'] = len(dc_ids)
+        self._nspd._mzn_model_data['datacenter_id'] = dc_ids
         self._nspd._mzn_model_data['vm'] = num_vms
         self._nspd._mzn_model_data['vm_cost'] = vm_cost
         self._nspd._mzn_model_data['storage'] = storage        
@@ -186,31 +193,28 @@ class NsPlacementDataFactory(object):
         '''extracts selected data from pil config'''
         
         #FIXME statically coded trp_id instead of extract and number crunch
-        trp_id = [[0, 12, 13, 14],[0,0,23,24],[0,0,0,34],[0,0,0,0]]
+
+        dc_count = self._nspd._mzn_model_data['number_of_dc']
+
+        trp_latency = [[0 for _ in range(dc_count)] for _ in range(dc_count)]
+        trp_price = [[0 for _ in range(dc_count)] for _ in range(dc_count)]
+        trp_id = [[0 for _ in range(dc_count)] for _ in range(dc_count)]
+
+        # create link identities
+        for x in range(dc_count):
+            for y in range(dc_count):
+                trp_id[x][y] = x * dc_count + y
         
-        #trp_latency...
-        #FIXME get rid of the magic number and replace it with number of dc
-        trp_latency = [[0 for _ in range(4)] for _ in range(4)]
-        trp_price = [[0 for _ in range(4)] for _ in range(4)]
-        
-        #FIXME the entire mechanism for trp_latency assembly is fundamentally unstable
         pils = [e for e in self._pp_dict['pil']]
         for pil in pils:
-            # make this an ordered dictionary so we know we catch the description first
-            # sort on length and reverse, as long as 'description' key is the longest this should work
-            pil_ordered = OrderedDict(sorted(pil.items(), key=lambda t: len(t[0]), reverse = True))
-            for k,v in pil_ordered.items():
-                if k == 'pil_description':
-                    match = re.match(r'Link between OpenStack(.) and OpenStack(.)', v)
-                    if match:
-                        idx1 = int(match.group(1)) - 1
-                        idx2 = int(match.group(2)) - 1
-                elif k == 'pil_latency':                
-                    trp_latency[idx1][idx2] = v
-                    trp_latency[idx2][idx1] = v
-                elif k == 'pil_price':
-                    trp_price[idx1][idx2] = v
-                    trp_price[idx2][idx1] = v
+            url1 = pil['pil_endpoints'][0]
+            url2 = pil['pil_endpoints'][1]
+            idx1 = self.dc_dict[url1]['dc_no']
+            idx2 = self.dc_dict[url2]['dc_no']
+            trp_latency[idx1][idx2] = pil['pil_latency']
+            trp_latency[idx2][idx1] = pil['pil_latency']
+            trp_price[idx1][idx2] = pil['pil_price']
+            trp_price[idx2][idx1] = pil['pil_price']
         
         
         self._nspd._mzn_model_data['trp_id'] = trp_id
