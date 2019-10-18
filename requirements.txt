@@ -1,3 +1,4 @@
+pandas
 # Copyright 2019 ArctosLabs Scandinavia AB
 # *************************************************************
 
