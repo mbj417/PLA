@@ -1,6 +1,7 @@
+from collections import Counter
 from pathlib import Path
 from unittest import TestCase, mock
-import unittest
+from unittest.mock import call
 
 import yaml
 
@@ -50,107 +51,81 @@ class TestNsPlacementDataFactory(TestCase):
                      "_id": "eda92f47-29b9-4007-9709-c1833dbfbe31"}]
 
     # vim_url, _id as dict, i.e. take the selected _values_ from vim_url and _id
-    def _populate_vim_accounts_info(self):
+    def _produce_ut_vim_accounts_info(self):
+        """
+        FIXME temporary, we will need more control over vim_urls and _id for test purpose - make a generator
+        :return: vim_url and _id as dict, i.e. extract these from vim_accounts data
+        """
         return {_['vim_url']: _['_id'] for _ in TestNsPlacementDataFactory.vim_accounts}
 
-    def _populate_pop_pil_dict(self):
+    def _populate_pop_pil_info(self):
         """
-        ToDo
-        - read file, just as NsPlacementDataFactory but from other location
+        FIXME we need more control over content in pop_pil information - more files or generator and data
+        Note str(Path()) is a 3.5 thing
         """
-        with open(Path('pop_pil_unittest1.yaml')) as pp_fd:
+        with open(str(Path('pop_pil_unittest1.yaml'))) as pp_fd:
             test_data = yaml.safe_load_all(pp_fd)
             return next(test_data)
 
     def _get_ut_nsd_from_file(self, nsd_file_name):
-        with open(Path(nsd_file_name)) as nsd_fd:
+        with open(str(Path(nsd_file_name))) as nsd_fd:
             test_data = yaml.safe_load_all(nsd_fd)
             return next(test_data)
 
-    @unittest.skip('Not now')
-    @mock.patch.object(NsPlacementDataFactory, '_harvest_pil_data')
-    @mock.patch.object(NsPlacementDataFactory, '_harvest_pop_data')
-    def test__add_pop_pil_info(self, mock1, mock2):
-        """
-        file exists and is valid
-        file does not exist
-        file is corrupt (empty, not proper yaml content in this context)
+    def _produce_ut_vnf_price_list(self):
+        price_list_file = "../server/vnf_price_list.yaml"
+        with open(str(Path(price_list_file))) as pl_fd:
+            price_list_data = yaml.safe_load_all(pl_fd)
+            return {i['vnfd']: {i1['vim_url']: i1['price'] for i1 in i['prices']} for i in next(price_list_data)}
 
-        ToDo
-        - mock so that we do not call _harvest_pop_data/_harvest_pel_data those are other tests
-        - control which file to use so that we can have valid, invalid and non-existing
-        """
-        print(self.nspdf._nsd_path)
-        print(self.nspdf._pp_dict)
-        self.nspdf._add_pop_pil_info()
-        # print(self.nspdf._pp_dict)
-        # print(self.nspdf._nspd._mzn_model_data)
-        self.assertTrue(self.nspdf is not None, "Should be an instance")
-        mock1.assert_called_once()
-        mock2.assert_called_once()
+    def _produce_ut_vnf_price_list_OBSOLETE(self):
+        import pandas as pd
+        file = 'vnf_price_list.xlsx'
+        df = pd.read_excel(file, sheet_name='vnf_price_list', index_col=0, skiprows=1)
+        return {vnfd_id_ref: {vim: df.loc[vnfd_id_ref][vim] for vim in df.columns}
+                for vnfd_id_ref in df.index.values}
 
-    def test__add_pop_pil_info_nonexist(self):
+    def test__produce_trp_link_characteristics_link_latency(self):
         """
-        failure to find the configuration file causes IOError
-        """
-
-        with mock.patch.object(NsPlacementDataFactory, 'pop_pil_path', 'nonexisting.yaml'):
-            nspdf = NsPlacementDataFactory()
-            self.assertRaises(IOError, nspdf._add_pop_pil_info)
-
-    @unittest.skip('Incomplete')
-    def test__add_pop_pil_info_invalid(self):
-        """
-        reading an empty file raise some to be defined exception
-        Can I first create a test where a valid file is read from another location (i.e. the test catalog)
-        """
-        pass
-
-    @unittest.skip('Not now')
-    def test__harvest_pop_data(self):
-        """
-        Todo
-        - populate dict with test data (default pop_pil.yaml will do to start with)
-        FIXME Let's wait with this until we now if we really need PoP anymore
-        """
-        nspdf = NsPlacementDataFactory(self._populate_vim_accounts_info())
-
-        nspdf._pp_dict = self._populate_pop_pil_dict()
-        nspdf._harvest_pop_data()
-        print(nspdf._nspd._mzn_model_data)
-
-    def test__harvest_pil_data(self):
-        """
-        Todo
-        -populate dict with test data (default pop_pil.yaml will do to start with)
         -test with full set of vims as in pil
         -test with fewer vims compared to pil
         -test with more(other) vims compared to pil
         -test with invalid/corrupt pil configuration file (e.g. missing endpoint), empty file, not yaml conformant
-        - where does the system validate the format of e.g vim_url's and _id's?
+        - test with non-supported characteristic
+
+        :return:
         """
-        nspdf = NsPlacementDataFactory(self._populate_vim_accounts_info())
-        nspdf._pp_dict = self._populate_pop_pil_dict()
-        nspdf._harvest_pil_data()
-        self.assertEqual(nspdf._nspd._mzn_model_data['trp_link_latency'],
-                         [[0, 50, 120, 150], [50, 0, 100, 150], [120, 100, 0, 50], [150, 150, 50, 0]],
-                         "trp_link_latency incorrect")
-        self.assertEqual(nspdf._nspd._mzn_model_data['trp_link_price_list'],
-                         [[0, 5, 6, 6], [5, 0, 5, 6], [6, 5, 0, 5], [6, 6, 5, 0]], "trp_link_price incorrect")
+        content_expected = [0, 0, 0, 0, 120, 120, 130, 130, 140, 140, 230, 230, 240, 240, 340, 340]
 
-    @unittest.skip('Not now')
-    def test__add_nsd_info(self):
-        self.fail()
+        nspdf = NsPlacementDataFactory(self._produce_ut_vim_accounts_info(),
+                                       self._produce_ut_vnf_price_list(),
+                                       nsd=None,
+                                       pop_pil_info=self._populate_pop_pil_info())
+        pil_latencies = nspdf._produce_trp_link_characteristics_data('pil_latency')
+        content_produced = [i for row in pil_latencies for i in row]
+        self.assertEqual(Counter(content_expected), Counter(content_produced), 'trp_link_latency incorrect')
 
-    @unittest.skip('Not now')
-    def test__add_nsd_info_local_file(self):
-        self.fail()
-
-    def test__harvest_nsd_data(self):
+    def test__produce_trp_link_characteristics_link_price(self):
         """
-        Todo
-        - get some test nsd into the factory (the nsd from the patras revision will do to start with
-        - test with yada yada yada
+        -test with full set of vims as in pil
+        -test with fewer vims compared to pil
+        -test with more(other) vims compared to pil
+        -test with invalid/corrupt pil configuration file (e.g. missing endpoint), empty file, not yaml conformant
+        # FIXME
+        :return:
+        """
+        content_expected = [0, 0, 0, 0, 12, 12, 13, 13, 14, 14, 23, 23, 24, 24, 34, 34]
+        nspdf = NsPlacementDataFactory(self._produce_ut_vim_accounts_info(),
+                                       self._produce_ut_vnf_price_list(),
+                                       nsd=None,
+                                       pop_pil_info=self._populate_pop_pil_info())
+        pil_prices = nspdf._produce_trp_link_characteristics_data('pil_price')
+        content_produced = [i for row in pil_prices for i in row]
+        self.assertEqual(Counter(content_expected), Counter(content_produced), 'invalid trp link prices')
+
+    def test__produce_vld_desc(self):
+        """
+
         :return:
         """
         vld_desc_expected = [{'cp_refs': ['1', '2'], 'latency': 150, 'jitter': 30},
@@ -158,9 +133,12 @@ class TestNsPlacementDataFactory(TestCase):
 
         nsd = self._get_ut_nsd_from_file('nsd_unittest1.yaml')
         nsd = nsd['nsd:nsd-catalog']['nsd'][0]
-        nspdf = NsPlacementDataFactory(self._populate_vim_accounts_info(), nsd=nsd)
-        nspdf._harvest_nsd_data()
-        self.assertEqual(nspdf._nspd._mzn_model_data['vld_desc'],
+        nspdf = NsPlacementDataFactory(self._produce_ut_vim_accounts_info(),
+                                       self._produce_ut_vnf_price_list(),
+                                       nsd=nsd,
+                                       pop_pil_info=None)
+
+        self.assertEqual(nspdf._produce_vld_desc(),
                          vld_desc_expected, "vld_desc incorrect")
 
     def test__produce_ns_desc(self):
@@ -171,41 +149,49 @@ class TestNsPlacementDataFactory(TestCase):
         - nsd with different vndfd-id-refs
         - fault case scenarios with non-existing vims, non-existing vnfds
         """
-        ns_desc_expected =[{'member-vnf-index': '1', 'vnf_price_per_vim': [10, 9, 8, 7]},
-                           {'member-vnf-index': '2', 'vnf_price_per_vim': [10, 9, 8, 7]},
-                           {'member-vnf-index': '3', 'vnf_price_per_vim': [10, 9, 8, 7]}]
+        nsd = self._get_ut_nsd_from_file('nsd_unittest1.yaml')
+        nsd = nsd['nsd:nsd-catalog']['nsd'][0]
+        nspdf = NsPlacementDataFactory(self._produce_ut_vim_accounts_info(),
+                                       self._produce_ut_vnf_price_list(),
+                                       nsd=nsd,
+                                       pop_pil_info=None)
+
+        ns_desc = nspdf._produce_ns_desc()
+        # check that all expected member-vnf-index are present
+        vnfs = [e['member-vnf-index'] for e in ns_desc]
+        self.assertEqual(Counter(['1', '3', '2']), Counter(vnfs), 'member-vnf-index invalid')
+        # check that vnf_price_per_vim has  proper values
+        for e in ns_desc:
+            self.assertEqual(Counter([7, 8, 9, 10]), Counter(e['vnf_price_per_vim']), 'vnf_price_per_vim invalid')
+
+    @mock.patch.object(NsPlacementDataFactory, '_produce_trp_link_characteristics_data')
+    @mock.patch.object(NsPlacementDataFactory, '_produce_vld_desc')
+    @mock.patch.object(NsPlacementDataFactory, '_produce_ns_desc')
+    def test_create_ns_placement_data(self, mock_prd_ns_desc, mock_prd_vld_desc, mock_prd_trp_link_char):
+        """
+        :return:
+        """
+        vim_accounts_expected = [v.replace('-', '_') for v in ['92b056a7-38f5-438d-b8ee-3f93b3531f87',
+                                                               '6618d412-d7fc-4eb0-a6f8-d2c258e0e900',
+                                                               '331ffdec-44a8-4707-94a1-af7a292d9735',
+                                                               'eda92f47-29b9-4007-9709-c1833dbfbe31']]
 
         nsd = self._get_ut_nsd_from_file('nsd_unittest1.yaml')
         nsd = nsd['nsd:nsd-catalog']['nsd'][0]
-        nspdf = NsPlacementDataFactory(self._populate_vim_accounts_info(),
-                                       self._get_ut_vnf_price_list(), nsd=nsd)
-        nspdf._produce_ns_desc()
-        self.assertEqual(nspdf._nspd._mzn_model_data['ns_desc'],
-                         ns_desc_expected, "ns_desc incorrect")
+        nspdf = NsPlacementDataFactory(self._produce_ut_vim_accounts_info(),
+                                       self._produce_ut_vnf_price_list(),
+                                       nsd=nsd,
+                                       pop_pil_info=self._populate_pop_pil_info())
+        nspd = nspdf.create_ns_placement_data()
+        self.assertEqual(Counter(nspd['vim_accounts']),
+                         Counter(vim_accounts_expected), "vim_accounts incorrect")
+        # mock1.assert_called_once() Note for python > 3.5
+        self.assertTrue(mock_prd_ns_desc.called, '_produce_ns_desc not called')
+        # mock2.assert_called_once() Note for python > 3.5
+        self.assertTrue((mock_prd_vld_desc.called, ' _produce_vld_desc not called'))
+        mock_prd_trp_link_char.assert_has_calls([call('pil_latency'), call('pil_price')])
 
-    @unittest.skip('Not now')
-    def test__add_vnfd_info(self):
-        self.fail()
-
-    @unittest.skip('Not now')
-    def test__add_vnfd_info_local_file(self):
-        self.fail()
-
-    @unittest.skip('Not now')
-    def test__harvest_vnfd_data(self):
-        self.fail()
-
-    @unittest.skip('Not now')
-    def test__add_inventory_data(self):
-        self.fail()
-
-    @unittest.skip('Not now')
-    def test_create_ns_placement_data(self):
-        self.fail()
-
-    def _get_ut_vnf_price_list(self):
-        import pandas as pd
-        file = 'vnf_price_list.xlsx'
-        df = pd.read_excel(file, sheet_name='vnf_price_list', index_col=0, skiprows=1)
-        return {vnfd_id_ref: {vim: df.loc[vnfd_id_ref][vim] for vim in df.columns}
-                for vnfd_id_ref in df.index.values}
+        regexps = [r"\{.*\}", r".*'file':.*mznplacement.py", r".*'time':.*datetime.datetime\(.*\)"]
+        generator_data = str(nspd['generator_data'])
+        for regex in regexps:
+            self.assertRegex(generator_data, regex, "generator data invalid")

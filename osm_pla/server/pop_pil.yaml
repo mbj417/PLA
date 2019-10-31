@@ -33,41 +33,42 @@ pop:
       - medium: 7
       - small: 4
       - tiny: 3
-# POP Interconnecting Link (PIL), price list and latency
+# POP Interconnecting Link (PIL), price list and latency     
 pil:
   - pil_description: Link between OpenStack1 and OpenStack2
-    pil_price: 12
-    pil_latency: 120
+    pil_price: 5
+    pil_latency: 50
     pil_endpoints:
       - http://10.234.12.47:5000/v3
       - http://10.234.12.44:5000/v3
   - pil_description: Link between OpenStack1 and OpenStack3
-    pil_price: 13
-    pil_latency: 130
+    pil_price: 6
+    pil_latency: 120
     pil_endpoints:
       - http://10.234.12.47:5000/v3
       - http://10.234.12.46:5000/v3
   - pil_description: Link between OpenStack1 and OpenStack4
-    pil_price: 14
-    pil_latency: 140
+    pil_price: 6
+    pil_latency: 150
     pil_endpoints:
       - http://10.234.12.47:5000/v3
       - http://10.234.12.43:5000/v3
   - pil_description: Link between OpenStack2 and OpenStack3
-    pil_price: 23
-    pil_latency: 230
+    pil_price: 5
+    pil_latency: 100
     pil_endpoints:
       - http://10.234.12.44:5000/v3
       - http://10.234.12.46:5000/v3
   - pil_description: Link between OpenStack2 and OpenStack4
-    pil_price: 24
-    pil_latency: 240
+    pil_price: 6
+    pil_latency: 150
     pil_endpoints:
       - http://10.234.12.44:5000/v3
       - http://10.234.12.43:5000/v3
   - pil_description: Link between OpenStack3 and OpenStack4
-    pil_price: 34
-    pil_latency: 340
+    pil_price: 5
+    pil_latency: 50
     pil_endpoints:
       - http://10.234.12.46:5000/v3
       - http://10.234.12.43:5000/v3
+      

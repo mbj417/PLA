@@ -1,0 +1,26 @@
+% This minizinc model is generated using {{generator_data.file}}
+% at {{generator_data.time}}.
+
+{% import 'macros.j2' as macros -%}
+%This is the NETWORK RESOURCE MODEL
+{{ macros.vim_accounts(vim_accounts) }}
+{{ macros.trp_link_latency(trp_link_latency) }}
+{{ macros.trp_link_jitter(trp_link_latency) }}
+{{ macros.trp_link_price_list(trp_link_price_list) }}
+{{ macros.vnf_price_list_per_vim(ns_desc) }}
+
+% This is the NETWORK BASIC LOAD MODEL (CONSUMED)
+% NOTE. This is not applicable in OSM Release 7
+
+% This is the SERVICE CONSUMPTION MODEL
+% These are the variables, i.e. which DC to select for each VNF
+{{ macros.variables_vnf(ns_desc)}}
+
+% These are the set of rules for selecting DCs to VNFs
+{{ macros.vld_constraints(vld_desc) }}
+% Calculate the cost for VNFs and cost for transport link and total cost
+{{ macros.transport_cost(vld_desc) }}
+{{ macros.used_vim_cost(ns_desc) }}
+var int: total_cost = used_transport_cost + used_vim_cost;
+
+solve minimize total_cost;

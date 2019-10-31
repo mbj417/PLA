@@ -18,27 +18,30 @@
 ##
 
 import asyncio
-#import yaml
+# import yaml
 import json
 import logging
-#import logging.handlers
-#import getopt
-#import sys
-#from time import time, sleep
+# import logging.handlers
+# import getopt
+# import sys
+# from time import time, sleep
+from pathlib import Path
 
+import pkg_resources
+import yaml
 from osm_common import dbmemory, dbmongo, msglocal, msgkafka
 from osm_pla.placement.mznplacement import MznPlacementConductor
 from osm_pla.placement.mznplacement import NsPlacementDataFactory
 
-#from osm_common import version as common_version
-#from osm_common.msgbase import MsgException
+# from osm_common import version as common_version
+# from osm_common.msgbase import MsgException
 
 from osm_pla.config.config import Config
 
 __author__ = "Martin Bjorklund"
 
-class Server:
 
+class Server:
     def __init__(self, config: Config, loop=None):
         self.log = logging.getLogger("pla.server")
         self.db = None
@@ -56,7 +59,7 @@ class Server:
             else:
                 raise Exception("Invalid configuration param '{}' at '[database]':'driver'".format(
                     config.get('database', 'driver')))
-            
+
             if config.get('message', 'driver') == "local":
                 self.msgBus = msglocal.MsgLocal()
             elif config.get('message', 'driver') == "kafka":
@@ -66,10 +69,10 @@ class Server:
                     config.get('message', 'driver')))
             self.msgBus.loop = loop
             self.msgBus.connect(config.get('message'))
-            
-#            self.log.info("VIM Accounts in DB:")
-#            self.vim_accounts = self.db.get_list("vim_accounts", {})
-#            self.log.info(json.dumps(self.vim_accounts))
+
+        #            self.log.info("VIM Accounts in DB:")
+        #            self.vim_accounts = self.db.get_list("vim_accounts", {})
+        #            self.log.info(json.dumps(self.vim_accounts))
         except Exception as e:
             self.log.exception("kafka setup error. Exception: {}".format(e))
 
@@ -84,6 +87,7 @@ class Server:
                 if session["public"]:
                     project_filter.append("ANY")
                 else:
+                    # FIXME when is this reachable
                     project_filter_n.append("ANY")
 
             if session.get("PROJECT.ne"):
@@ -102,91 +106,90 @@ class Server:
         nsd = self.db.get_one("nsds", filter)
         return nsd
 
-    def _get_vnfd(self, vnfdId, session):
-        filter = self._get_project_filter(session)
-        filter["id"] = vnfdId
-        vnfds = self.db.get_list("vnfds", filter)
-        return vnfds[0]
-
     def _get_enabled_vims(self, session):
         filter = self._get_project_filter(session)
         filter["_admin.operationalState"] = "ENABLED"
         vims = self.db.get_list("vim_accounts", filter)
         return vims
 
-    async def get_placement_suggestions(self, session, params):
-        nsd = self._get_nsd(params.get('nsdId'), session)
-        vims = self._get_enabled_vims(session)
-        vnfds = {}
-        for vnfdRef in nsd['constituent-vnfd']:
-            vnfdId = vnfdRef['vnfd-id-ref']
-            vnfd = self._get_vnfd(vnfdId, session)
-            vnfds[vnfdId] = vnfd
+    def _get_vnf_price_list(self):
+        """
+        read vnf price list configuration file and reformat its content
+        FIXME file location outside package to prefer.
+        FIXME should we make this static?
+        :return: dictionary formatted as {'<vnfd>': {'<vim-url>':'<price>'}}
+        """
+        price_list_file = pkg_resources.resource_filename(__name__, 'vnf_price_list.yaml')
+        with open(price_list_file) as pl_fd:
+            price_list_data = yaml.safe_load_all(pl_fd)
+            return {i['vnfd']: {i1['vim_url']: i1['price'] for i1 in i['prices']} for i in next(price_list_data)}
 
-        #pops = self.config.get('pop')
-        #for vim in vims:
-        #    for pop in pops:
-        #        if vim['vim_url'] == pop['vim_url']:
-        #            pop.update(vim)
-        #            self.db.create("pops", pop)
+    def _get_pop_pil_info(self):
+        """
+        Read and return pop_pil information from file
+        :return: pop_pil configuration file content as Python object
+        """
+        path = pkg_resources.resource_filename(__name__, 'pop_pil.yaml')
+        with open(path) as pp_fd:
+            data = yaml.safe_load_all((pp_fd))
+            return next(data)
 
-        self.log.info("vims = {}".format(json.dumps(vims)))
-        self.log.info("nsd = {}".format(json.dumps(nsd)))
+    async def get_placement(self, session, params, request_id):
+        """
+        - Collects and prepares placement information.
+        - Request placement computation.
+        - Formats and distribute placement result
 
-        vim_index = 1
-        vim_table = {}
-        for vim in vims:
-            vim_table[str(vim_index)] = vim['_id']
-            vim_index += 1
-            
-        nspd = NsPlacementDataFactory(nsd, vnfds).create_ns_placement_data()
-        self.log.info("nspd = {}".format(json.dumps(nspd._mzn_model_data)))
-        placement = MznPlacementConductor(vim_table, self.log).do_placement_computation(nspd)
-        self.log.info("MZN Placement = {}".format(json.dumps(placement._placement)))
-        vnfs = []
-        for vnfIndex, vimAccountId in placement._placement.items():
-            vnf = { 'member-vnf-index' :  vnfIndex, 'vimAccountId' : vimAccountId }
-            vnfs.append(vnf)
-            
-        if False:
-            # create vnf info (pick vim sequentially from list)
-            defaultVimAccountId = params.get('vimAccountId', None)
-            vimNo = 0
-            for vnfd in nsd.get('constituent-vnfd', []):
-                vnfIndex = vnfd['member-vnf-index']
-                vnf = { 'member-vnf-index' :  vnfIndex, 'vimAccountId' : defaultVimAccountId }
-                
-                # pick next vim unless last vim reached
-                if vimNo < len(vims):
-                    vnf['vimAccountId'] = vims[vimNo]['_id']
-                    vimNo += 1
-                vnfs.append(vnf)
+        Note: exceptions result in empty response message
 
-        # create vld info
-        vlds = []
-        for nsVld in nsd.get('vld', []):
-            vld = { 'name' : nsVld.get('name', "noname") }
-            vimNetworkNames = {}
-            for cp in nsVld.get('vnfd-connection-point-ref', []):
-                vnfIndex = cp.get('member-vnf-index-ref')
-                for vnf in vnfs:
-                    if vnf['member-vnf-index'] == vnfIndex:
-                        vimAccountId = vnf['vimAccountId']
-                        vimNetworkNames[vimAccountId] = 'private'
-                        break;
-            vld['vim-network-name'] = vimNetworkNames
-            vlds.append(vld)
+        :param request_id:
+        :param session:
+        :param params:
+        :return:
+        """
+        try:
+            nsd = self._get_nsd(params.get('nsdId'), session)
+            vims_information = {_['vim_url']: _['_id'] for _ in self._get_enabled_vims(session)}
+            price_list = self._get_vnf_price_list()
+            pop_pil_info = self._get_pop_pil_info()
 
-        suggestions = []
-        suggestions.append({'vnf' : vnfs, 'vld': vlds,'wimAccountId': False })
-        await self.msgBus.aiowrite("pla", "suggestions", { 'suggestions': suggestions })
+            nspd = NsPlacementDataFactory(vims_information,
+                                          price_list,
+                                          nsd,
+                                          pop_pil_info).create_ns_placement_data()
+
+            vnf_placement = MznPlacementConductor(self.log).do_placement_computation(nspd)
+
+            # convenience mapping of index to vim account that simplifies construction of vld section of the response
+            vnf_index_to_vim_account = {_['member-vnf-index']: _['vimAccountId'] for _ in vnf_placement}
+
+            # FIXME is 'noname' and empty list acceptable?
+            vlds = []
+            for ns_vld in nsd.get('vld', []):
+                vld = {'name': ns_vld.get('name', "noname")}
+                vim_network_name = ns_vld.get('vim-network-namee')
+                # FIXME vim-network-name may not be available. Use default or report fail?
+                if vim_network_name is None:
+                    pass
+                vld['vim-network-name'] = {vnf_index_to_vim_account[cp_ref_info.get('member-vnf-index-ref')]
+                                           : vim_network_name for cp_ref_info in ns_vld.get('vnfd-connection-point-ref')}
+                vlds.append(vld)
+        except Exception as e:
+            # Note: there is no cure for failure so we have a catch-all clause here
+            self.log.exception("PLA fault. Exception: {}".format(e))
+            vnf_placement = []
+            vlds = []
+        finally:
+            await self.msgBus.aiowrite("pla", "placement", {'vnf': vnf_placement, 'vld': vlds, 'wimAccountId': False,
+                                                            'request_id': request_id})
 
     def handle_kafka_command(self, topic, command, params):
         self.log.info("Kafka msg arrived: {} {} {}".format(topic, command, params))
-        if topic == "pla" and command == "get_suggestions":
-            session = params.get('session', None)
+        if topic == "pla" and command == "get_placement":
+            session = params.get('session', None)  # FIXME why setting the default to the default?
             nsParams = params.get('nsParams')
-            self.loop.create_task(self.get_placement_suggestions(session, nsParams))
+            request_id = params.get('request_id')
+            self.loop.create_task(self.get_placement(session, nsParams, request_id))
 
     async def kafka_read(self):
         self.log.info("Task kafka_read start")
@@ -198,7 +201,7 @@ class Server:
                 self.log.error("kafka read error. Exception: {}".format(e))
                 await asyncio.sleep(5, loop=self.loop)
 
-        self.log.info("Task kafka_read exit")
+        self.log.info("Task kafka_read exit") # FIXME unreachable?
 
     def run(self):
         self.loop.run_until_complete(self.kafka_read())

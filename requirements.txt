@@ -1,4 +1,3 @@
-pandas
 # Copyright 2019 ArctosLabs Scandinavia AB
 # *************************************************************
 
@@ -34,6 +33,7 @@ peewee-migrate==1.1.*
 python-novaclient==12.0.*
 python-neutronclient==5.1.*
 pymzn==0.18.*
-jinja2==2.10.1
+jinja2==2.10.3
+pandas==0.25.2
 git+https://osm.etsi.org/gerrit/osm/common.git#egg=osm-common
 git+https://osm.etsi.org/gerrit/osm/N2VC.git#egg=n2vc

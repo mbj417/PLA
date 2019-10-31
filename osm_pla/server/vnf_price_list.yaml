@@ -1,0 +1,28 @@
+- vnfd: cirros_vnfd_v2
+  prices:
+    - vim_url: http://10.234.12.47:5000/v3
+      vim_name: OpenStack1
+      price: 10
+    - vim_url: http://10.234.12.44:5000/v3
+      vim_name: OpenStack2
+      price: 9
+    - vim_url: http://10.234.12.46:5000/v3
+      vim_name: OpenStack3
+      price: 8
+    - vim_url: http://10.234.12.43:5000/v3
+      vim_name: OpenStack4
+      price: 7
+- vnfd: hackfest_multivdu-vnf
+  prices:
+    - vim_url: http://10.234.12.47:5000/v3
+      vim_name: OpenStack1
+      price: 17
+    - vim_url: http://10.234.12.44:5000/v3
+      vim_name: OpenStack2
+      price: 18
+    - vim_url: http://10.234.12.46:5000/v3
+      vim_name: OpenStack3
+      price: 19
+      vim_name: OpenStack4      
+    - vim_url: http://10.234.12.43:5000/v3
+      price: 20     

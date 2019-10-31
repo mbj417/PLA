@@ -1,0 +1,79 @@
+{%- macro vim_accounts(vim_accounts) -%}
+enum  Vims = {
+{%- for vim in vim_accounts %}
+{{vim}}{% if loop.nextitem is defined%},{% endif %}
+{%- endfor -%}
+}; % The vim-accounts
+{%- endmacro -%}
+
+{%- macro variables_vnf(ns_desc) -%}
+{%- for vnf in ns_desc -%}
+var Vims: VNF{{vnf.vnf_id}};
+{% endfor -%}
+{%- endmacro -%}
+
+{%- macro trp_link_latency(trp_link_latency) -%}
+array[Vims, Vims] of int: trp_link_latency = [
+{%- for row in trp_link_latency -%}
+|
+{%- for col in row -%}
+{{col}},
+{%- endfor %}
+{% endfor -%}
+|]; % Transport link latency between data centers
+{%- endmacro -%}
+
+{%- macro trp_link_jitter(trp_link_jitter) -%}
+array[Vims, Vims] of int: trp_link_jitter = [
+{%- for row in trp_link_jitter -%}
+|
+{%- for col in row -%}
+{{col}},
+{%- endfor %}
+{% endfor -%}
+|]; % Transport link jitter between data centers
+{%- endmacro -%}
+
+{%- macro trp_link_price_list(trp_link_price_list) -%}
+array[Vims, Vims] of int: trp_link_price_list = [
+{%- for row in trp_link_price_list -%}
+|
+{%- for col in row -%}
+{{col}},
+{%- endfor %}
+{% endfor -%}
+|]; % Transport link price list
+{%- endmacro -%}
+
+{%- macro vnf_price_list_per_vim(ns_desc) -%}
+{%- for vnf in ns_desc -%}
+array[Vims] of int: vim_price_list_{{vnf.vnf_id}} = [
+{%- for price in vnf.vnf_price_per_vim -%}
+{{price}}{% if loop.nextitem is defined%},{% endif %}
+{%- endfor -%}
+];
+{% endfor %}
+{%- endmacro -%}
+
+{%- macro vld_constraints(vld_desc) -%}
+{%- for cp in vld_desc -%}
+constraint trp_link_latency[VNF{{cp.cp_refs[0]}}, VNF{{cp.cp_refs[1]}}] <= {{cp.latency}};
+{% endfor -%}
+{%- for cp in vld_desc -%}
+constraint trp_link_jitter[VNF{{cp.cp_refs[0]}}, VNF{{cp.cp_refs[1]}}] <= {{cp.jitter}};
+{% endfor -%}
+{%- endmacro -%}
+
+{% macro transport_cost(vld_desc) -%}
+var int: used_transport_cost =
+{%- for cp in vld_desc -%}
+trp_link_price_list[VNF{{cp.cp_refs[0]}}, VNF{{cp.cp_refs[1]}}]{% if loop.nextitem is defined %}+{% else %};{% endif %}
+{% endfor -%}
+{%- endmacro -%}
+
+{%- macro used_vim_cost(ns_desc) -%}
+var int: used_vim_cost =
+{%- for vnf in ns_desc -%}
+vim_price_list_{{vnf.vnf_id}}[VNF{{vnf.vnf_id}}]{% if loop.nextitem is defined %}+{% else %};{% endif %}
+{% endfor -%}
+{%- endmacro -%}
