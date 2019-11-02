@@ -163,7 +163,7 @@ class Server:
             # convenience mapping of index to vim account that simplifies construction of vld section of the response
             vnf_index_to_vim_account = {_['member-vnf-index']: _['vimAccountId'] for _ in vnf_placement}
 
-            # FIXME is 'noname' and empty list acceptable?
+            # FIXME is 'noname' and empty list acceptable or should we simply take the exception?
             vlds = []
             for ns_vld in nsd.get('vld', []):
                 vld = {'name': ns_vld.get('name', "noname")}

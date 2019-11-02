@@ -1,8 +1,17 @@
-'''
-Created on 30 aug. 2019
-
-@author: LG
-'''
+# Copyright 2019 ArctosLabs Scandinavia AB
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import datetime
 import platform
 
@@ -15,7 +24,6 @@ class MznPlacementConductor(object):
     """
     Knows how to process placement req using minizinc
     """
-    # FIXME is this a reasonable way to handle cross-platform mzn paths?
     if platform.system() == 'Windows':
         default_mzn_path = 'C:\Program Files\MiniZinc IDE (bundled)\minizinc.exe'
     else:
@@ -36,11 +44,11 @@ class MznPlacementConductor(object):
         :param mzn_model: a minizinc model as str (note: may also be path to .mzn file)
         :param mzm_model_data: minizinc model data dictionary (typically not used with our models)
         :return: list of dicts formatted as {'vimAccountId': '<account id>', 'member-vnf-index': <'index'>}
-        or formatted as [{}] if unsatisfiable model FIXME should probably be an exception!
+        or formatted as [{}] if unsatisfiable model
         """
         solns = pymzn.minizinc(mzn_model, data=mzn_model_data, output_mode='item')
 
-        # FIXME what if unsatisfiable?
+        # FIXME what if unsatisfiable? Should we raise exception instead?
         if 'UNSATISFIABLE' in str(solns):
             return [{}]
 
@@ -73,9 +81,8 @@ class MznModelGenerator(object):
     
     FIXME - need to decide file system location for template (and possibly model in target system)
     '''
-    default_j2_templateold = 'osm_pla_static_template.j2'
     default_j2_template = "osm_pla_dynamic_template.j2"
-    template_search_path = ['osm_pla/placement', '../placement']  # FIXME need another location eventually
+    template_search_path = ['osm_pla/placement', '../placement']  # FIXME need another location eventually?
 
     def __init__(self, log):
         '''
@@ -136,8 +143,6 @@ class NsPlacementDataFactory(object):
         self._nsd = nsd
         self._pop_pil_info = pop_pil_info
 
-        # self._nspd = NsPlacementData() FIXME
-
     def _produce_trp_link_characteristics_data(self, characteristics):
         """
         :param characteristics: one of  {pil_latency, pil_price, pil_jitter}
@@ -145,7 +150,7 @@ class NsPlacementDataFactory(object):
 
         FIXME decide on exception (should probably be an assert)
         """
-        if characteristics not in {'pil_latency', 'pil_price'}:
+        if characteristics not in {'pil_latency', 'pil_price', 'pil_jitter'}:
             raise Exception('characteristic \'{}\' not supported'.format(characteristics))
         num_vims = len(self._vim_accounts_info)
         trp_link_characteristics = [[0 for _ in range(num_vims)] for _ in range(num_vims)]
@@ -179,10 +184,8 @@ class NsPlacementDataFactory(object):
 
     def _produce_ns_desc(self):
         """
-        collect information for the nd_desc part of the placement data
-
+        collect information for the ns_desc part of the placement data
         for the vim_accounts that are applicable, collect the vnf_price
-        FIXME exceptions to be raised at fault scenarios
         """
         ns_desc = []
         for vnfd in self._nsd['constituent-vnfd']:
@@ -198,47 +201,13 @@ class NsPlacementDataFactory(object):
 
     def create_ns_placement_data(self):
         """populate NsPlacmentData object
-        FIXME we are lacking jitter data in the yaml file
         """
         ns_placement_data = {'vim_accounts': [vim_data['id'].replace('-', '_') for
                                               vim_data in self._vim_accounts_info.values()],
                              'trp_link_latency': self._produce_trp_link_characteristics_data('pil_latency'),
+                             'trp_link_jitter' : self._produce_trp_link_characteristics_data('pil_jitter'),
                              'trp_link_price_list': self._produce_trp_link_characteristics_data('pil_price'),
                              'ns_desc': self._produce_ns_desc(), 'vld_desc': self._produce_vld_desc(),
                              'generator_data': {'file': __file__, 'time': datetime.datetime.now()}}
 
         return ns_placement_data
-
-
-# class NsPlacementData2(object):
-#     """
-#     record like thingamajig
-#     """
-#
-#
-# class NsPlacementDataObsolete(object):
-#     '''Container for service requirements and infrastructure data.
-#
-#     FIXME at the moment a dictionary matching the data to be sent to the static model.
-#     Content directly added from factory. Wrapped in a class for expected future additions
-#     of behavior. '''
-#
-#     def __init__(self):
-#         self._mzn_model_data = {}
-#
-#
-# class PlacementResultObsolete(object):
-#     '''container for placement result
-#
-#     '''
-#
-#     def __init__(self, placement):
-#         '''Note: single placement. In case multiple solutions are found
-#         the selection of placement is done elsewhere'''
-#         self._placement = placement
-#
-#     def render_thyself_as_kafka_payload(self):
-#         vnf_field_content = ', '.join(
-#             "{{'vimAccountId': '{}'', 'member-vnf-index': '{}'}}".format(vim, vnf) for vnf, vim in
-#             self._placement.items())
-#         return 'vnf: [' + vnf_field_content + ']'

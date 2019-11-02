@@ -38,36 +38,42 @@ pil:
   - pil_description: Link between OpenStack1 and OpenStack2
     pil_price: 12
     pil_latency: 120
+    pil_jitter: 1200
     pil_endpoints:
       - http://10.234.12.47:5000/v3
       - http://10.234.12.44:5000/v3
   - pil_description: Link between OpenStack1 and OpenStack3
     pil_price: 13
     pil_latency: 130
+    pil_jitter: 1300
     pil_endpoints:
       - http://10.234.12.47:5000/v3
       - http://10.234.12.46:5000/v3
   - pil_description: Link between OpenStack1 and OpenStack4
     pil_price: 14
     pil_latency: 140
+    pil_jitter: 1400
     pil_endpoints:
       - http://10.234.12.47:5000/v3
       - http://10.234.12.43:5000/v3
   - pil_description: Link between OpenStack2 and OpenStack3
     pil_price: 23
     pil_latency: 230
+    pil_jitter: 2300
     pil_endpoints:
       - http://10.234.12.44:5000/v3
       - http://10.234.12.46:5000/v3
   - pil_description: Link between OpenStack2 and OpenStack4
     pil_price: 24
     pil_latency: 240
+    pil_jitter: 2400
     pil_endpoints:
       - http://10.234.12.44:5000/v3
       - http://10.234.12.43:5000/v3
   - pil_description: Link between OpenStack3 and OpenStack4
     pil_price: 34
     pil_latency: 340
+    pil_jitter: 3400
     pil_endpoints:
       - http://10.234.12.46:5000/v3
       - http://10.234.12.43:5000/v3

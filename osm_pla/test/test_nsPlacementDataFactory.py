@@ -1,3 +1,17 @@
+# Copyright 2019 ArctosLabs Scandinavia AB
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 from collections import Counter
 from pathlib import Path
 from unittest import TestCase, mock
@@ -105,13 +119,33 @@ class TestNsPlacementDataFactory(TestCase):
         content_produced = [i for row in pil_latencies for i in row]
         self.assertEqual(Counter(content_expected), Counter(content_produced), 'trp_link_latency incorrect')
 
-    def test__produce_trp_link_characteristics_link_price(self):
+    def test__produce_trp_link_characteristics_link_jitter(self):
         """
         -test with full set of vims as in pil
         -test with fewer vims compared to pil
         -test with more(other) vims compared to pil
         -test with invalid/corrupt pil configuration file (e.g. missing endpoint), empty file, not yaml conformant
-        # FIXME
+        - test with non-supported characteristic
+
+        :return:
+        """
+        content_expected = [0, 0, 0, 0, 1200, 1200, 1300, 1300, 1400, 1400, 2300, 2300, 2400, 2400, 3400, 3400]
+
+        nspdf = NsPlacementDataFactory(self._produce_ut_vim_accounts_info(),
+                                       self._produce_ut_vnf_price_list(),
+                                       nsd=None,
+                                       pop_pil_info=self._populate_pop_pil_info())
+        pil_jitter = nspdf._produce_trp_link_characteristics_data('pil_jitter')
+        content_produced = [i for row in pil_jitter for i in row]
+        self.assertEqual(Counter(content_expected), Counter(content_produced), 'trp_link_jitter incorrect')
+
+    def test__produce_trp_link_characteristics_link_price(self):
+        """
+        ToDo
+        -test with full set of vims as in pil
+        -test with fewer vims compared to pil
+        -test with more(other) vims compared to pil
+        -test with invalid/corrupt pil configuration file (e.g. missing endpoint), empty file, not yaml conformant
         :return:
         """
         content_expected = [0, 0, 0, 0, 12, 12, 13, 13, 14, 14, 23, 23, 24, 24, 34, 34]
@@ -189,7 +223,7 @@ class TestNsPlacementDataFactory(TestCase):
         self.assertTrue(mock_prd_ns_desc.called, '_produce_ns_desc not called')
         # mock2.assert_called_once() Note for python > 3.5
         self.assertTrue((mock_prd_vld_desc.called, ' _produce_vld_desc not called'))
-        mock_prd_trp_link_char.assert_has_calls([call('pil_latency'), call('pil_price')])
+        mock_prd_trp_link_char.assert_has_calls([call('pil_latency'), call('pil_jitter'), call('pil_price')])
 
         regexps = [r"\{.*\}", r".*'file':.*mznplacement.py", r".*'time':.*datetime.datetime\(.*\)"]
         generator_data = str(nspd['generator_data'])

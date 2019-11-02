@@ -1,3 +1,17 @@
+# Copyright 2019 ArctosLabs Scandinavia AB
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import logging
 from unittest import TestCase, mock
 
@@ -73,17 +87,13 @@ var int: total_cost = used_transport_cost + used_vim_cost;
 solve minimize total_cost;
 
 """
-test_mzn_unsatisfyable_model = """ 
+test_mzn_unsatisfiable_model = """ 
 var 1..2: item1;
 var 1..2: item2;
 constraint item1 + item2 == 5;
 
 solve satisfy;
 """
-
-
-# FIXME We can really get rid of the placementresult class. No need for that.
-
 
 class TestMznPlacementConductor(TestCase):
     def test__run_placement_model(self):
@@ -98,7 +108,7 @@ class TestMznPlacementConductor(TestCase):
 
     def test_run_placement_model_unsatisfiable(self):
         mpc = MznPlacementConductor(logging.getLogger(__name__))
-        self.assertEqual(mpc._run_placement_model(mzn_model=test_mzn_unsatisfyable_model),
+        self.assertEqual(mpc._run_placement_model(mzn_model=test_mzn_unsatisfiable_model),
                          [{}], "Faulty syntax or content for unsatisfiable model")
 
     @mock.patch.object(MznModelGenerator, 'create_model', side_effect=[MznModel('%model')])

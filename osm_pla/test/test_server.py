@@ -1,3 +1,17 @@
+# Copyright 2019 ArctosLabs Scandinavia AB
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import asyncio
 import random
 import sys
@@ -23,6 +37,13 @@ pla_get_suggestions_wo_session = {'nsParams': {'nsName': 'Test_constrained5', 's
                                                'nsdId': '15fc1941-f095-4cd8-af2d-1000bd6d9eaa',
                                                'nsDescription': 'LowLatency',
                                                'vimAccountId': '8460b670-31cf-4fae-9f3e-d0dd6c57b61e'}}
+
+pla_getsuggestions_w_pinning = {'nsParams': {'nsName': 'Test_constrained5', 'ssh_keys': [],
+                                             'nsdId': '15fc1941-f095-4cd8-af2d-1000bd6d9eaa',
+                                             'nsDescription': 'LowLatency',
+                                             'vimAccountId': '8460b670-31cf-4fae-9f3e-d0dd6c57b61e'},
+                                'config': [{'member-vnf-index': '1',
+                                            'vim_account': '73cd1a1b-333e-4e29-8db2-00d23bd9b644'}]}
 
 list_of_vims = [{"_id": "73cd1a1b-333e-4e29-8db2-00d23bd9b644", "vim_user": "admin", "name": "OpenStack1",
                  "vim_url": "http://10.234.12.47:5000/v3", "vim_type": "openstack", "vim_tenant_name": "osm_demo",
@@ -246,7 +267,7 @@ class TestServer(TestCase):
             [{'vimAccountId': 'bbbbbbbb-38f5-438d-b8ee-3f93b3531f87', 'member-vnf-index': '1'},
              {'vimAccountId': 'aaaaaaaa-38f5-438d-b8ee-3f93b3531f87', 'member-vnf-index': '2'},
              {'vimAccountId': 'aaaaaaaa-38f5-438d-b8ee-3f93b3531f87', 'member-vnf-index': '3'}]
-        session = pla_get_suggestions_w_session.get('session', None)  # FIXME why setting the default to the default?
+        session = pla_get_suggestions_w_session.get('session')
         nsParams = pla_get_suggestions_w_session.get('nsParams')
         request_id = random.randint(1000, 2000)
 
@@ -306,7 +327,7 @@ class TestServer(TestCase):
              {'vimAccountId': 'aaaaaaaa-38f5-438d-b8ee-3f93b3531f87', 'member-vnf-index': '3'}]
         session = pla_get_suggestions_w_session.get('session')
         nsParams = pla_get_suggestions_w_session.get('nsParams')
-        request_id = random.randint(1000,2000)
+        request_id = random.randint(1000, 2000)
 
         _run(server.get_placement(session, nsParams, request_id))
         self.assertTrue(server.msgBus.aiowrite.mock.called)
