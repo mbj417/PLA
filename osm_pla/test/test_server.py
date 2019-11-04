@@ -38,12 +38,12 @@ pla_get_suggestions_wo_session = {'nsParams': {'nsName': 'Test_constrained5', 's
                                                'nsDescription': 'LowLatency',
                                                'vimAccountId': '8460b670-31cf-4fae-9f3e-d0dd6c57b61e'}}
 
-pla_getsuggestions_w_pinning = {'nsParams': {'nsName': 'Test_constrained5', 'ssh_keys': [],
-                                             'nsdId': '15fc1941-f095-4cd8-af2d-1000bd6d9eaa',
-                                             'nsDescription': 'LowLatency',
-                                             'vimAccountId': '8460b670-31cf-4fae-9f3e-d0dd6c57b61e'},
-                                'config': [{'member-vnf-index': '1',
-                                            'vim_account': '73cd1a1b-333e-4e29-8db2-00d23bd9b644'}]}
+pla_get_placement_w_pinning = {'nsParams': {'nsName': 'Test_constrained5', 'ssh_keys': [],
+                                            'nsdId': '15fc1941-f095-4cd8-af2d-1000bd6d9eaa',
+                                            'nsDescription': 'LowLatency',
+                                            'vimAccountId': '8460b670-31cf-4fae-9f3e-d0dd6c57b61e'},
+                               'pinning': [{'member-vnf-index': '1',
+                                           'vim_account': '73cd1a1b-333e-4e29-8db2-00d23bd9b644'}]}
 
 list_of_vims = [{"_id": "73cd1a1b-333e-4e29-8db2-00d23bd9b644", "vim_user": "admin", "name": "OpenStack1",
                  "vim_url": "http://10.234.12.47:5000/v3", "vim_type": "openstack", "vim_tenant_name": "osm_demo",
@@ -249,7 +249,7 @@ class TestServer(TestCase):
         self.assertIn('Server.get_placement', str(args[0]), 'get_placement not called')
 
     # Note: does not mock reading of price list and pop_pil_info
-    @mock.patch.object(NsPlacementDataFactory, '__init__', lambda x0, x1, x2, x3, x4: None)
+    @mock.patch.object(NsPlacementDataFactory, '__init__', lambda x0, x1, x2, x3, x4,x5: None)
     @mock.patch.object(MznPlacementConductor, 'do_placement_computation')
     @mock.patch.object(NsPlacementDataFactory, 'create_ns_placement_data')
     @mock.patch.object(Server, '_get_nsd')
@@ -258,6 +258,14 @@ class TestServer(TestCase):
                            mock_get_nsd,
                            mock_create_ns_placement_data,
                            mock_do_placement_computation):
+        """
+        test that NsPlacementDataFactory is called with proper args not supported...
+        :param mock_get_enabled_vims:
+        :param mock_get_nsd:
+        :param mock_create_ns_placement_data:
+        :param mock_do_placement_computation:
+        :return:
+        """
         server = self.serverSetup()
 
         server.msgBus.aiowrite = _async_mock()
@@ -271,7 +279,68 @@ class TestServer(TestCase):
         nsParams = pla_get_suggestions_w_session.get('nsParams')
         request_id = random.randint(1000, 2000)
 
-        _run(server.get_placement(session, nsParams, request_id))
+        _run(server.get_placement(session, nsParams, request_id, None))
+
+        # mock_get_nsd.assert_called_once() assert_called_once() for python > 3.5
+        self.assertTrue(mock_get_nsd.called, 'get_nsd not called as expected')
+        # mock_get_enabled_vims.assert_called_once() assert_called_once() for python > 3.5
+        self.assertTrue(mock_get_enabled_vims.called, 'get_enabled_vims not called as expected')
+        # mock_create_ns_placement_data.assert_called_once() assert_called_once() for python > 3.5
+        self.assertTrue(mock_create_ns_placement_data.called, 'create_ns_placement_data not called as expected')
+        # mock_do_placement_computation.assert_called_once()  assert_called_once() for python > 3.5
+        self.assertTrue(mock_do_placement_computation.called, 'do_placement_computation not called as expected')
+        self.assertTrue(server.msgBus.aiowrite.mock.called)
+
+        args, kwargs = server.msgBus.aiowrite.mock.call_args
+        self.assertTrue(len(args) == 3, 'invalid format')
+        self.assertEqual('pla', args[0], 'topic invalid')
+        self.assertEqual('placement', args[1], 'message invalid')
+
+        # extract placement result and check content
+        placement = args[2]
+        expected_keys = {'vnf', 'vld', 'wimAccountId', 'request_id'}
+        self.assertEqual(expected_keys, set(placement.keys()), "placement response missing keys")
+        self.assertIs(type(placement['vnf']), list, 'vnf not a list')
+        expected_vnf_keys = {'vimAccountId', 'member-vnf-index'}
+        self.assertEqual(expected_vnf_keys, set(placement['vnf'][0]), "placement['vnf'] missing keys")
+        self.assertIs(type(placement['vld']), list, 'vld not a list')
+        # FIXME the model behind the vnf is tested elsewhere but the vld is in fact created here so content tests needed
+        expected_vld_keys = {'name', 'vim-network-name'}
+        self.assertEqual(expected_vld_keys, set(placement['vld'][0]), "placement['vld'] missing keys")
+        self.assertTrue(placement['wimAccountId'] is False, "wimAccountId invalid")
+        self.assertEqual(request_id, placement['request_id'], 'invalid request_id')
+    @mock.patch.object(NsPlacementDataFactory, '__init__', lambda x0, x1, x2, x3, x4,x5: None)
+    @mock.patch.object(MznPlacementConductor, 'do_placement_computation')
+    @mock.patch.object(NsPlacementDataFactory, 'create_ns_placement_data')
+    @mock.patch.object(Server, '_get_nsd')
+    @mock.patch.object(Server, '_get_enabled_vims')
+    def test_get_placement_w_pinning(self, mock_get_enabled_vims,
+                           mock_get_nsd,
+                           mock_create_ns_placement_data,
+                           mock_do_placement_computation):
+        """
+        test that NsPlacementDataFactory is called with proper args not supported...
+        :param mock_get_enabled_vims:
+        :param mock_get_nsd:
+        :param mock_create_ns_placement_data:
+        :param mock_do_placement_computation:
+        :return:
+        """
+        server = self.serverSetup()
+
+        server.msgBus.aiowrite = _async_mock()
+        mock_get_nsd.return_value = nsd_from_db
+        mock_get_enabled_vims.return_value = list_of_vims
+        mock_do_placement_computation.return_value = \
+            [{'vimAccountId': 'bbbbbbbb-38f5-438d-b8ee-3f93b3531f87', 'member-vnf-index': '1'},
+             {'vimAccountId': 'aaaaaaaa-38f5-438d-b8ee-3f93b3531f87', 'member-vnf-index': '2'},
+             {'vimAccountId': 'aaaaaaaa-38f5-438d-b8ee-3f93b3531f87', 'member-vnf-index': '3'}]
+        session = pla_get_placement_w_pinning.get('session')
+        nsParams = pla_get_placement_w_pinning.get('nsParams')
+        pinning = pla_get_placement_w_pinning.get('pinning')
+        request_id = random.randint(1000, 2000)
+
+        _run(server.get_placement(session, nsParams, request_id, pinning))
 
         # mock_get_nsd.assert_called_once() assert_called_once() for python > 3.5
         self.assertTrue(mock_get_nsd.called, 'get_nsd not called as expected')
@@ -302,8 +371,9 @@ class TestServer(TestCase):
         self.assertTrue(placement['wimAccountId'] is False, "wimAccountId invalid")
         self.assertEqual(request_id, placement['request_id'], 'invalid request_id')
 
+
     # Note: does not mock reading of price list and pop_pil_info
-    @mock.patch.object(NsPlacementDataFactory, '__init__', lambda x0, x1, x2, x3, x4: None)
+    @mock.patch.object(NsPlacementDataFactory, '__init__', lambda x0, x1, x2, x3, x4, x5: None)
     @mock.patch.object(MznPlacementConductor, 'do_placement_computation')
     @mock.patch.object(NsPlacementDataFactory, 'create_ns_placement_data')
     @mock.patch.object(Server, '_get_nsd')
@@ -329,7 +399,7 @@ class TestServer(TestCase):
         nsParams = pla_get_suggestions_w_session.get('nsParams')
         request_id = random.randint(1000, 2000)
 
-        _run(server.get_placement(session, nsParams, request_id))
+        _run(server.get_placement(session, nsParams, request_id, None))
         self.assertTrue(server.msgBus.aiowrite.mock.called)
         args, kwargs = server.msgBus.aiowrite.mock.call_args
         placement = args[2]

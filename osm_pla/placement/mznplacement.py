@@ -33,7 +33,7 @@ class MznPlacementConductor(object):
         pymzn.config['minizinc'] = mzn_path
         self.log = log  # FIXME what to log (besides forwarding it to MznModelGenerator) here?
 
-    def _run_placement_model(self, mzn_model, mzn_model_data={}):
+    def _run_placement_model(self, mzn_model, ns_desc, mzn_model_data={}):
         """
         Runs the minizinc placement model and post process the result
         Note: in this revision we use the 'item' output mode from pymzn.minizinc since it ease
@@ -60,7 +60,11 @@ class MznPlacementConductor(object):
 
         vnf_vim_mapping = (e.split('=') for e in solns_as_str.split(';'))
         res = [{'vimAccountId': e[1].replace('_', '-'), 'member-vnf-index': str(e[0][-1:])} for e in vnf_vim_mapping]
-        return res
+        # add any pinned VNFs
+        pinned = [{'vimAccountId': e['vim_account'].replace('_', '-'), 'member-vnf-index': e['vnf_id']} for e in ns_desc
+                  if 'vim_account' in e.keys()]
+
+        return res + pinned
 
     def do_placement_computation(self, nspd):
         """
@@ -71,7 +75,7 @@ class MznPlacementConductor(object):
         """
         mzn_model = MznModelGenerator(self.log).create_model(nspd)
 
-        return self._run_placement_model(mzn_model=mzn_model.render_thyself_as_str())
+        return self._run_placement_model(mzn_model.render_thyself_as_str(), nspd['ns_desc'])
 
 
 class MznModelGenerator(object):
@@ -128,13 +132,14 @@ class NsPlacementDataFactory(object):
     information tailored for the minizinc model code generator
     """
 
-    def __init__(self, vim_accounts_info, vnf_prices, nsd, pop_pil_info):
+    def __init__(self, vim_accounts_info, vnf_prices, nsd, pop_pil_info, pinning):
         """
         :param vim_accounts_info: a dictionary with vim url as key and id as value, we add a unique index to it for use
         in the mzn array constructs
         :param vnf_prices: a dictionary with 'vnfd-id-ref' as key and a dictionary with vim_urls: cost as value
         :param nsd: FIXME
         :param pop_pil_info: FIXME
+        :param pinning: list of {'member-vnf-index': '<idx>', 'vim_account': '<vim-account>'}
         """
         import itertools
         next_idx = itertools.count()
@@ -142,6 +147,7 @@ class NsPlacementDataFactory(object):
         self._vnf_prices = vnf_prices
         self._nsd = nsd
         self._pop_pil_info = pop_pil_info
+        self.pinning = pinning
 
     def _produce_trp_link_characteristics_data(self, characteristics):
         """
@@ -189,14 +195,23 @@ class NsPlacementDataFactory(object):
         """
         ns_desc = []
         for vnfd in self._nsd['constituent-vnfd']:
+            vnf_info = {}
+            vnf_info['vnf_id'] = str(vnfd['member-vnf-index'])
+            # prices
             prices_for_vnfd = self._vnf_prices[vnfd['vnfd-id-ref']]
             # the list of prices must be ordered according to the indexing of the vim_accounts
             price_list = [_ for _ in range(len(self._vim_accounts_info))]
             for k in prices_for_vnfd.keys():
                 price_list[self._vim_accounts_info[k]['idx']] = prices_for_vnfd[k]
+            vnf_info['vnf_price_per_vim'] = price_list
 
-            ns_desc.append({'member-vnf-index': str(vnfd['member-vnf-index']),
-                            'vnf_price_per_vim': price_list})
+            # pinning to dc
+            if self.pinning is not None:
+                for pinned_vnf in self.pinning:
+                    if str(vnfd['member-vnf-index']) == pinned_vnf['member-vnf-index']:
+                        vnf_info['vim_account'] = pinned_vnf['vim-account'].replace('-', '_')
+
+            ns_desc.append(vnf_info)
         return ns_desc
 
     def create_ns_placement_data(self):
@@ -205,7 +220,7 @@ class NsPlacementDataFactory(object):
         ns_placement_data = {'vim_accounts': [vim_data['id'].replace('-', '_') for
                                               vim_data in self._vim_accounts_info.values()],
                              'trp_link_latency': self._produce_trp_link_characteristics_data('pil_latency'),
-                             'trp_link_jitter' : self._produce_trp_link_characteristics_data('pil_jitter'),
+                             'trp_link_jitter': self._produce_trp_link_characteristics_data('pil_jitter'),
                              'trp_link_price_list': self._produce_trp_link_characteristics_data('pil_price'),
                              'ns_desc': self._produce_ns_desc(), 'vld_desc': self._produce_vld_desc(),
                              'generator_data': {'file': __file__, 'time': datetime.datetime.now()}}

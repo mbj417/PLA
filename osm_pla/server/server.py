@@ -134,7 +134,7 @@ class Server:
             data = yaml.safe_load_all((pp_fd))
             return next(data)
 
-    async def get_placement(self, session, params, request_id):
+    async def get_placement(self, session, params, request_id, pinning):
         """
         - Collects and prepares placement information.
         - Request placement computation.
@@ -145,6 +145,7 @@ class Server:
         :param request_id:
         :param session:
         :param params:
+        :param pinning:
         :return:
         """
         try:
@@ -156,7 +157,8 @@ class Server:
             nspd = NsPlacementDataFactory(vims_information,
                                           price_list,
                                           nsd,
-                                          pop_pil_info).create_ns_placement_data()
+                                          pop_pil_info,
+                                          pinning).create_ns_placement_data()
 
             vnf_placement = MznPlacementConductor(self.log).do_placement_computation(nspd)
 
@@ -186,10 +188,11 @@ class Server:
     def handle_kafka_command(self, topic, command, params):
         self.log.info("Kafka msg arrived: {} {} {}".format(topic, command, params))
         if topic == "pla" and command == "get_placement":
-            session = params.get('session', None)  # FIXME why setting the default to the default?
+            session = params.get('session', None)  # FIXME why setting the default to the default fallback?
             nsParams = params.get('nsParams')
             request_id = params.get('request_id')
-            self.loop.create_task(self.get_placement(session, nsParams, request_id))
+            pinning = params.get('pinning')
+            self.loop.create_task(self.get_placement(session, nsParams, request_id, pinning))
 
     async def kafka_read(self):
         self.log.info("Task kafka_read start")

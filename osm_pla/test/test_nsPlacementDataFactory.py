@@ -114,7 +114,7 @@ class TestNsPlacementDataFactory(TestCase):
         nspdf = NsPlacementDataFactory(self._produce_ut_vim_accounts_info(),
                                        self._produce_ut_vnf_price_list(),
                                        nsd=None,
-                                       pop_pil_info=self._populate_pop_pil_info())
+                                       pop_pil_info=self._populate_pop_pil_info(), pinning=None)
         pil_latencies = nspdf._produce_trp_link_characteristics_data('pil_latency')
         content_produced = [i for row in pil_latencies for i in row]
         self.assertEqual(Counter(content_expected), Counter(content_produced), 'trp_link_latency incorrect')
@@ -134,7 +134,7 @@ class TestNsPlacementDataFactory(TestCase):
         nspdf = NsPlacementDataFactory(self._produce_ut_vim_accounts_info(),
                                        self._produce_ut_vnf_price_list(),
                                        nsd=None,
-                                       pop_pil_info=self._populate_pop_pil_info())
+                                       pop_pil_info=self._populate_pop_pil_info(), pinning=None)
         pil_jitter = nspdf._produce_trp_link_characteristics_data('pil_jitter')
         content_produced = [i for row in pil_jitter for i in row]
         self.assertEqual(Counter(content_expected), Counter(content_produced), 'trp_link_jitter incorrect')
@@ -152,7 +152,7 @@ class TestNsPlacementDataFactory(TestCase):
         nspdf = NsPlacementDataFactory(self._produce_ut_vim_accounts_info(),
                                        self._produce_ut_vnf_price_list(),
                                        nsd=None,
-                                       pop_pil_info=self._populate_pop_pil_info())
+                                       pop_pil_info=self._populate_pop_pil_info(), pinning=None)
         pil_prices = nspdf._produce_trp_link_characteristics_data('pil_price')
         content_produced = [i for row in pil_prices for i in row]
         self.assertEqual(Counter(content_expected), Counter(content_produced), 'invalid trp link prices')
@@ -170,7 +170,7 @@ class TestNsPlacementDataFactory(TestCase):
         nspdf = NsPlacementDataFactory(self._produce_ut_vim_accounts_info(),
                                        self._produce_ut_vnf_price_list(),
                                        nsd=nsd,
-                                       pop_pil_info=None)
+                                       pop_pil_info=None, pinning=None)
 
         self.assertEqual(nspdf._produce_vld_desc(),
                          vld_desc_expected, "vld_desc incorrect")
@@ -188,15 +188,45 @@ class TestNsPlacementDataFactory(TestCase):
         nspdf = NsPlacementDataFactory(self._produce_ut_vim_accounts_info(),
                                        self._produce_ut_vnf_price_list(),
                                        nsd=nsd,
-                                       pop_pil_info=None)
+                                       pop_pil_info=None,
+                                       pinning=None)
 
         ns_desc = nspdf._produce_ns_desc()
         # check that all expected member-vnf-index are present
-        vnfs = [e['member-vnf-index'] for e in ns_desc]
-        self.assertEqual(Counter(['1', '3', '2']), Counter(vnfs), 'member-vnf-index invalid')
-        # check that vnf_price_per_vim has  proper values
+        vnfs = [e['vnf_id'] for e in ns_desc]
+        self.assertEqual(Counter(['1', '3', '2']), Counter(vnfs), 'vnf_id invalid')
+
+        expected_keys = ['vnf_id', 'vnf_price_per_vim']
         for e in ns_desc:
+            # check that vnf_price_per_vim has proper values
             self.assertEqual(Counter([7, 8, 9, 10]), Counter(e['vnf_price_per_vim']), 'vnf_price_per_vim invalid')
+            # check that no pinning directives included
+            self.assertEqual(Counter(expected_keys), Counter(e.keys()), 'pinning directive misplaced')
+
+    def test_produce_ns_desc_w_pinning(self):
+        nsd = self._get_ut_nsd_from_file('nsd_unittest1.yaml')
+        nsd = nsd['nsd:nsd-catalog']['nsd'][0]
+        pinning = [{'member-vnf-index': '2', 'vim-account': '331ffdec-44a8-4707-94a1-af7a292d9735'}]
+        nspdf = NsPlacementDataFactory(self._produce_ut_vim_accounts_info(),
+                                       self._produce_ut_vnf_price_list(),
+                                       nsd=nsd,
+                                       pop_pil_info=None,
+                                       pinning=pinning)
+        ns_desc = nspdf._produce_ns_desc()
+        # check that all expected member-vnf-index are present
+        vnfs = [e['vnf_id'] for e in ns_desc]
+        self.assertEqual(Counter(['1', '3', '2']), Counter(vnfs), 'vnf_id invalid')
+
+        for e in ns_desc:
+            # check that vnf_price_per_vim has proper values
+            self.assertEqual(Counter([7, 8, 9, 10]), Counter(e['vnf_price_per_vim']), 'vnf_price_per_vim invalid')
+            # check that member-vnf-index 2 is pinned correctly
+            if e['vnf_id'] == '2':
+                self.assertTrue('vim_account' in e.keys(), 'missing pinning directive')
+                self.assertTrue(pinning[0]['vim-account'] == e['vim_account'].replace('_', '-'),
+                                'invalid pinning vim-account')
+            else:
+                self.assertTrue('vim-account' not in e.keys(), 'pinning directive misplaced')
 
     @mock.patch.object(NsPlacementDataFactory, '_produce_trp_link_characteristics_data')
     @mock.patch.object(NsPlacementDataFactory, '_produce_vld_desc')
@@ -215,7 +245,7 @@ class TestNsPlacementDataFactory(TestCase):
         nspdf = NsPlacementDataFactory(self._produce_ut_vim_accounts_info(),
                                        self._produce_ut_vnf_price_list(),
                                        nsd=nsd,
-                                       pop_pil_info=self._populate_pop_pil_info())
+                                       pop_pil_info=self._populate_pop_pil_info(), pinning=None)
         nspd = nspdf.create_ns_placement_data()
         self.assertEqual(Counter(nspd['vim_accounts']),
                          Counter(vim_accounts_expected), "vim_accounts incorrect")

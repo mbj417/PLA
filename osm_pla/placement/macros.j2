@@ -8,7 +8,11 @@ enum  Vims = {
 
 {%- macro variables_vnf(ns_desc) -%}
 {%- for vnf in ns_desc -%}
+{%- if vnf.vim_account %}
+Vims: VNF{{vnf.vnf_id}} = {{vnf.vim_account}};
+{%- else %}
 var Vims: VNF{{vnf.vnf_id}};
+{%- endif -%}
 {% endfor -%}
 {%- endmacro -%}
 
