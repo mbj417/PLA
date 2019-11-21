@@ -96,6 +96,12 @@ class Server:
 
         return p_filter
 
+    def _get_nslcmop(self, nsdlcmopId, session):
+        filter = self._get_project_filter(session)
+        filter["_id"] = nsdlcmopId
+        nslcmop = self.db.get_one("nslcmops", filter)
+        return nslcmop
+
     def _get_nsd(self, nsdId, session):
         filter = self._get_project_filter(session)
         filter["_id"] = nsdId
@@ -108,15 +114,10 @@ class Server:
         vnfds = self.db.get_list("vnfds", filter)
         return vnfds[0]
 
-    def _get_enabled_vims(self, session):
-        filter = self._get_project_filter(session)
-        filter["_admin.operationalState"] = "ENABLED"
-        vims = self.db.get_list("vim_accounts", filter)
-        return vims
-
-    async def get_placement_suggestions(self, session, params):
-        nsd = self._get_nsd(params.get('nsdId'), session)
-        vims = self._get_enabled_vims(session)
+    async def get_placement(self, session, nslcmopId):
+        nslcmop = self._get_nslcmop(nslcmopId, session)
+        nsd = self._get_nsd(nslcmop['operationParams']['nsdId'], session)
+        vims = nslcmop['operationParams']['validVimAccounts']
         vnfds = {}
         for vnfdRef in nsd['constituent-vnfd']:
             vnfdId = vnfdRef['vnfd-id-ref']
@@ -136,7 +137,7 @@ class Server:
         vim_index = 1
         vim_table = {}
         for vim in vims:
-            vim_table[str(vim_index)] = vim['_id']
+            vim_table[str(vim_index)] = vim
             vim_index += 1
             
         nspd = NsPlacementDataFactory(nsd, vnfds).create_ns_placement_data()
@@ -148,20 +149,6 @@ class Server:
             vnf = { 'member-vnf-index' :  vnfIndex, 'vimAccountId' : vimAccountId }
             vnfs.append(vnf)
             
-        if False:
-            # create vnf info (pick vim sequentially from list)
-            defaultVimAccountId = params.get('vimAccountId', None)
-            vimNo = 0
-            for vnfd in nsd.get('constituent-vnfd', []):
-                vnfIndex = vnfd['member-vnf-index']
-                vnf = { 'member-vnf-index' :  vnfIndex, 'vimAccountId' : defaultVimAccountId }
-                
-                # pick next vim unless last vim reached
-                if vimNo < len(vims):
-                    vnf['vimAccountId'] = vims[vimNo]['_id']
-                    vimNo += 1
-                vnfs.append(vnf)
-
         # create vld info
         vlds = []
         for nsVld in nsd.get('vld', []):
@@ -177,16 +164,15 @@ class Server:
             vld['vim-network-name'] = vimNetworkNames
             vlds.append(vld)
 
-        suggestions = []
-        suggestions.append({'vnf' : vnfs, 'vld': vlds,'wimAccountId': False })
-        await self.msgBus.aiowrite("pla", "suggestions", { 'suggestions': suggestions })
+        result = {'vnf' : vnfs, 'vld': vlds,'wimAccountId': False, 'nslcmopId' : nslcmopId }
+        await self.msgBus.aiowrite("pla", "placement", result)
 
     def handle_kafka_command(self, topic, command, params):
         self.log.info("Kafka msg arrived: {} {} {}".format(topic, command, params))
-        if topic == "pla" and command == "get_suggestions":
+        if topic == "pla" and command == "get_placement":
             session = params.get('session', None)
-            nsParams = params.get('nsParams')
-            self.loop.create_task(self.get_placement_suggestions(session, nsParams))
+            nslcmopId = params.get('nslcmopId')
+            self.loop.create_task(self.get_placement(session, nslcmopId))
 
     async def kafka_read(self):
         self.log.info("Task kafka_read start")
